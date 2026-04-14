@@ -50,6 +50,11 @@ export default function App(){
           <button onClick={loadDash} style={{padding:'5px 9px',background:G.gdim,border:`1px solid ${G.gold}`,borderRadius:6,color:G.gold,fontSize:10,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>↻</button>
         </div>
       </div>
+      
+      {/* DEBUG BANNER */}
+      <div style={{background:'#ff0',color:'#000',padding:'4px 10px',fontSize:10,fontFamily:'monospace',textAlign:'center',flexShrink:0}}>
+        DEBUG | API: {d?'CONNECTED':'NO DATA'} | Blockers: {blockers.length} | Tasks: {openTasks.length} | Ch: {chapters.length} | Tab: {tab} | ms: {msPct}% | gen: {d?.generatedAt?.substring(11,19)||'none'}
+      </div>
       {/* CONTENT */}
       <div style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column'}}>
         {/* CHAT */}
