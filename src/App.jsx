@@ -39,9 +39,9 @@ export default function App(){
   const TABS=[{id:'chat',label:'Chat',icon:'📚'},{id:'overview',label:'Overview',icon:'📊'},{id:'chapters',label:'Chapters',icon:'📖'},{id:'calendar',label:'Calendar',icon:'📅'},{id:'tasks',label:'Tasks',icon:'✅'},{id:'budget',label:'Budget',icon:'💰'}]
   const QUICK=[['🎯 Daily','Give me today\'s highest-impact move for the book'],['📲 Content','Generate a 7-day social content batch for pre-launch'],['⚖️ Copyright','Walk me through filing copyright at copyright.gov right now'],['📦 Publishing','Walk me through KDP and IngramSpark setup step by step with URLs'],['🎙️ Narration','What is the full ACX audiobook pipeline for Dr. Motes to record?'],['📰 Press Kit','Build my full press kit: bio, Amazon description, interview questions, pitch email']]
   return(
-    <div style={{background:G.bg,color:G.text,height:'100dvh',fontFamily:"'DM Sans',system-ui,sans-serif",display:'flex',flexDirection:'column',overflow:'hidden'}}>
+    <div style={{background:G.bg,color:G.text,height:'100dvh',fontFamily:"'DM Sans',system-ui,sans-serif",display:'flex',flexDirection:'column',overflow:'hidden',paddingTop:'env(safe-area-inset-top)'}}>
       {/* TOPBAR */}
-      <div style={{background:G.surface,borderBottom:`1px solid ${G.border}`,display:'flex',alignItems:'center',gap:10,padding:'0 14px',height:52,flexShrink:0}}>
+      <div style={{background:G.surface,borderBottom:`1px solid ${G.border}`,display:'flex',alignItems:'center',gap:10,padding:'0 calc(14px + env(safe-area-inset-right)) 0 calc(14px + env(safe-area-inset-left))',height:52,flexShrink:0}}>
         <div style={{width:30,height:30,borderRadius:8,background:'linear-gradient(135deg,#2a1f06,#4a3510)',border:`1px solid ${G.gold}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,flexShrink:0}}>📖</div>
         <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:800,color:G.text}}>Book Manager</div><div style={{fontSize:8,color:G.gold,letterSpacing:'.06em',textTransform:'uppercase'}}>Tales from the Hood · MotesArt</div></div>
         <div style={{display:'flex',gap:6,alignItems:'center'}}>
@@ -49,11 +49,6 @@ export default function App(){
           <div style={{textAlign:'center',padding:'3px 8px',background:convDays<30?'rgba(224,85,85,0.1)':G.gdim,border:`1px solid ${convDays<30?G.red:G.gold}44`,borderRadius:6}}><div style={{fontFamily:'monospace',fontSize:11,fontWeight:700,color:convDays<30?G.red:G.gold}}>{convDays}d</div><div style={{fontSize:7,color:G.t3,textTransform:'uppercase'}}>Conv.</div></div>
           <button onClick={loadDash} style={{padding:'5px 9px',background:G.gdim,border:`1px solid ${G.gold}`,borderRadius:6,color:G.gold,fontSize:10,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>↻</button>
         </div>
-      </div>
-      
-      {/* DEBUG BANNER */}
-      <div style={{background:'#ff0',color:'#000',padding:'4px 10px',fontSize:10,fontFamily:'monospace',textAlign:'center',flexShrink:0}}>
-        DEBUG | API: {d?'CONNECTED':'NO DATA'} | Blockers: {blockers.length} | Tasks: {openTasks.length} | Ch: {chapters.length} | Tab: {tab} | ms: {msPct}% | gen: {d?.generatedAt?.substring(11,19)||'none'}
       </div>
       {/* CONTENT */}
       <div style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column'}}>
@@ -131,8 +126,8 @@ export default function App(){
         </div>}
       </div>
       {/* BOTTOM NAV */}
-      <div style={{background:G.surface,borderTop:`1px solid ${G.border}`,display:'flex',flexShrink:0,paddingBottom:'env(safe-area-inset-bottom)',position:'relative',zIndex:9999}}>
-        {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,padding:'8px 2px',background:'none',border:'none',borderTop:`2px solid ${tab===t.id?G.gold:'transparent'}`,color:tab===t.id?G.gold:G.t3,cursor:'pointer',fontFamily:'inherit',display:'flex',flexDirection:'column',alignItems:'center',gap:2,position:'relative',zIndex:10000}}><span style={{fontSize:18}}>{t.icon}</span><span style={{fontSize:8,fontWeight:700}}>{t.label}</span></button>)}
+      <div style={{background:G.surface,borderTop:`1px solid ${G.border}`,display:'flex',flexShrink:0,paddingBottom:'calc(4px + env(safe-area-inset-bottom))',paddingLeft:'env(safe-area-inset-left)',paddingRight:'env(safe-area-inset-right)',position:'relative',zIndex:9999}}>
+        {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,padding:'10px 2px 6px',background:'none',border:'none',borderTop:`2px solid ${tab===t.id?G.gold:'transparent'}`,color:tab===t.id?G.gold:G.t3,cursor:'pointer',fontFamily:'inherit',display:'flex',flexDirection:'column',alignItems:'center',gap:3,position:'relative',zIndex:10000,minHeight:48}}><span style={{fontSize:18}}>{t.icon}</span><span style={{fontSize:8,fontWeight:700}}>{t.label}</span></button>)}
       </div>
       {/* TASK MODAL */}
       {taskModal&&<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',display:'flex',alignItems:'flex-end',zIndex:1000}} onClick={e=>{if(e.target===e.currentTarget)setTaskModal(false)}}><div style={{background:G.s2,border:`1px solid ${G.border2}`,borderRadius:'18px 18px 0 0',padding:'20px',width:'100%',boxSizing:'border-box',paddingBottom:'calc(20px + env(safe-area-inset-bottom))'}}><div style={{width:40,height:4,borderRadius:2,background:G.border2,margin:'0 auto 18px'}}/><div style={{fontSize:17,fontWeight:800,color:G.text,marginBottom:14}}>Save as Task</div><input value={taskName} onChange={e=>setTaskName(e.target.value)} onKeyDown={e=>e.key==='Enter'&&saveTask(taskName)} placeholder="What needs to be done?" autoFocus style={{width:'100%',background:G.surface,border:`1px solid ${G.border2}`,borderRadius:10,padding:'11px 14px',color:G.text,fontSize:15,outline:'none',fontFamily:'inherit',marginBottom:14,boxSizing:'border-box'}}/><div style={{display:'flex',gap:10}}><button onClick={()=>setTaskModal(false)} style={{flex:1,padding:'12px',borderRadius:10,background:G.s3,border:`1px solid ${G.border}`,color:G.t2,cursor:'pointer',fontFamily:'inherit',fontSize:14,fontWeight:700}}>Cancel</button><button onClick={()=>saveTask(taskName)} style={{flex:1,padding:'12px',borderRadius:10,background:G.gold,border:'none',color:'#000',cursor:'pointer',fontFamily:'inherit',fontSize:14,fontWeight:700}}>Save Task</button></div></div></div>}
