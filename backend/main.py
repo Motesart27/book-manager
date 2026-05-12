@@ -77,7 +77,7 @@ def health():
 
 @app.route("/api/book/dashboard")
 def dashboard():
-    project_records  = at_get("BK_Project",  {"filterByFormula": "{Active Project}=1", "maxRecords": 1})
+    project_records  = at_get("BK_Project",  {"filterByFormula": "{Active Project}=TRUE()", "maxRecords": 1})
     chapter_records  = at_get("BK_Chapters", {"maxRecords": 20})
     task_records     = at_get("BK_Tasks",    {"filterByFormula": "AND({Status}!='Done',{Status}!='Resolved')", "maxRecords": 20})
     blocker_records  = at_get("BK_Blockers", {"filterByFormula": "{Status}='Active'", "maxRecords": 10})
@@ -168,11 +168,9 @@ def dashboard():
     total_expenses = sum(fields(r).get("Amount", 0) or 0 for r in expense_records)
 
     # Publishing readiness
-    pub_checks = ["Copyright Filed","ISBN Print","KDP URL","IngramSpark URL","ACX URL"]
     pub_done = 0
     if project:
         if project.get("copyrightFiled"): pub_done += 1
-        if project.get("isbn_print"): pub_done += 1
     platform_live = sum(1 for r in platform_records if fields(r).get("Account Status") == "Live")
     pub_pct = round((pub_done / 5) * 100)
 
@@ -208,7 +206,7 @@ def dashboard():
 
 @app.route("/api/book/project", methods=["GET"])
 def get_project():
-    records = at_get("BK_Project", {"filterByFormula": "{Active Project}=1", "maxRecords": 1})
+    records = at_get("BK_Project", {"filterByFormula": "{Active Project}=TRUE()", "maxRecords": 1})
     if not records:
         return err("No active project found", 404)
     return ok({"project": fields(records[0]), "id": records[0]["id"]})
@@ -293,8 +291,6 @@ def create_expense():
     result = at_post("BK_Expenses", body)
     if not result:
         return err("Create failed")
-
-    # Non-blocking FM sync
     try:
         fm_url = os.environ.get("FM_APP_URL", "")
         if fm_url and body.get("Amount"):
@@ -307,8 +303,7 @@ def create_expense():
                 "source":      "book-manager"
             }, timeout=5)
     except:
-        pass  # FM sync failure never blocks book record
-
+        pass
     return ok(result), 201
 
 # ─── REVENUE ─────────────────────────────────────────────────────────────────
@@ -327,8 +322,6 @@ def create_revenue():
     result = at_post("BK_Revenue", body)
     if not result:
         return err("Create failed")
-
-    # Non-blocking FM sync
     try:
         fm_url = os.environ.get("FM_APP_URL", "")
         if fm_url and body.get("Gross Amount"):
@@ -342,7 +335,6 @@ def create_revenue():
             }, timeout=5)
     except:
         pass
-
     return ok(result), 201
 
 # ─── MARKETING ───────────────────────────────────────────────────────────────
@@ -431,13 +423,11 @@ def book_agent():
     if not message:
         return err("message required", 400)
 
-    # Build context from live Airtable data
-    project_records = at_get("BK_Project", {"filterByFormula": "{Active Project}=1", "maxRecords": 1})
+    project_records = at_get("BK_Project", {"filterByFormula": "{Active Project}=TRUE()", "maxRecords": 1})
     chapter_records = at_get("BK_Chapters", {"maxRecords": 20})
     blocker_records = at_get("BK_Blockers", {"filterByFormula": "{Status}='Active'", "maxRecords": 10})
     task_records    = at_get("BK_Tasks",    {"filterByFormula": "AND({Status}!='Done')", "maxRecords": 10})
 
-    # Build live context string
     project_f = fields(project_records[0]) if project_records else {}
     chapters_summary = ", ".join(
         f"{fields(r).get('Chapter Number','?')}:{fields(r).get('Status','?')}"
@@ -460,26 +450,25 @@ Open Tasks: {'; '.join(open_task_names) if open_task_names else 'None'}
     if not anthropic_key:
         return err("ANTHROPIC_API_KEY not set", 500)
 
-    system = f"""You are the Book Manager Executive for "Tales from the Hood: A Biblical Guide to Growing from Male to Man" by Bishop Roskco A. Motes, PhD.
+    system = f"""You are the Book Manager Executive for \"Tales from the Hood: A Biblical Guide to Growing from Male to Man\" by Bishop Roskco A. Motes, PhD.
 
 {live_context}
 
 YOUR SKILL DOMAINS (all 8):
-1. Writing & Structure — outline, chapter flow, voice, ghostwriting
-2. Proofreading & Editing — grammar, clarity, pacing, developmental + copy editing
-3. Fact Verification — cross-check all scripture references, flag anything unverified
-4. Publishing — ISBN, copyright (copyright.gov), KDP, IngramSpark, LCCN, exact steps + URLs
-5. Digital Distribution — Amazon, Google Play Books, Apple Books, B&N, Kobo
-6. Narration / Audiobook — ACX setup, Dr. Motes recording workflow, chapter sync
-7. Marketing & Promotion — launch strategy, social content, email, press kit, BookTok
-8. Sales & Revenue — royalty rates, pricing strategy, bulk/speaking bundle deals
+1. Writing & Structure
+2. Proofreading & Editing
+3. Fact Verification
+4. Publishing — ISBN, copyright, KDP, IngramSpark
+5. Digital Distribution
+6. Narration / Audiobook — ACX
+7. Marketing & Promotion
+8. Sales & Revenue
 
 RULES:
 1. Start EVERY response: current phase + ONE highest-impact action
 2. Be specific — exact steps, exact URLs
-3. Quick actions generate STRUCTURED USABLE OUTPUT
-4. End with action items marked for task saving
-5. Convention deadline: mid-June 2026 — hardcover books must be ready"""
+3. End with action items for task saving
+4. Convention deadline: June 15, 2026"""
 
     messages = history[-10:] + [{"role": "user", "content": message}]
 
@@ -504,7 +493,6 @@ RULES:
             data = json.loads(resp.read())
         reply = data["content"][0]["text"]
 
-        # Log to Airtable (non-blocking)
         try:
             at_post("BK_AgentLog", {
                 "Session Date":     datetime.utcnow().strftime("%Y-%m-%d"),
@@ -533,18 +521,16 @@ def get_agent_log():
     })
     return ok([{"id": r["id"], **fields(r)} for r in records])
 
-# ─── OS READ ENDPOINT (public summary for OS dashboard panel) ─────────────────
+# ─── OS SUMMARY ───────────────────────────────────────────────────────────────
 
 @app.route("/api/book/os-summary")
 def os_summary():
-    """Lightweight endpoint — read-only for the Motesart OS BOOK panel"""
-    project_records = at_get("BK_Project", {"filterByFormula": "{Active Project}=1", "maxRecords": 1})
+    project_records = at_get("BK_Project", {"filterByFormula": "{Active Project}=TRUE()", "maxRecords": 1})
     chapter_records = at_get("BK_Chapters", {"maxRecords": 20})
     blocker_records = at_get("BK_Blockers", {"filterByFormula": "{Status}='Active'", "maxRecords": 6})
     task_records    = at_get("BK_Tasks",    {"filterByFormula": "AND({Status}!='Done')", "maxRecords": 5})
 
     project_f = fields(project_records[0]) if project_records else {}
-
     status_scores = {"Draft": 25, "In Review": 50, "Edited": 75, "Final": 100}
     total_score = sum(status_scores.get(fields(r).get("Status", "Draft"), 0) for r in chapter_records)
     ms_pct = round(total_score / max(len(chapter_records), 1))
